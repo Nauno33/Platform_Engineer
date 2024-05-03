@@ -1,0 +1,7 @@
+# vagrant stack : https://github.com/eazytraining/kubernetes-certification-stack
+
+git clone -b v1.29 https://github.com/eazytraining/kubernetes-certification-stack/
+cd kubernetes-certification-stack
+# Update RAM and CPU according to your computer (4Go RAM and 4 vCPU are recommanded per VM)
+vagrant up
+

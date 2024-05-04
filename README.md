@@ -134,7 +134,6 @@ the versions listed. Ingress-Nginx versions **may** work on older versions, but 
 See [this article](https://kubernetes.io/blog/2021/07/26/update-with-ingress-nginx/) if you want upgrade to the stable
 Ingress API.
 
-
 Nous pouvons maintenant voir que nous avons un ingressclass nommé "nginx" et notre ingress-nginx esposant sur l'IP externe 192.168.99.150 à l'aide notre metallb par la méthode L2.
 ```bash
  k get ingressclass
@@ -148,7 +147,6 @@ NAME                                 TYPE           CLUSTER-IP      EXTERNAL-IP 
 ingress-nginx-controller             LoadBalancer   10.99.65.98     192.168.99.150   80:30373/TCP,443:32364/TCP   3m12s   app.kubernetes.io/component=controller,app.kubernetes.io/instance=ingress-nginx,app.kubernetes.io/name=ingress-nginx
 ingress-nginx-controller-admission   ClusterIP      10.110.43.139   <none>           443/TCP                      3m12s   app.kubernetes.io/component=controller,app.kubernetes.io/instance=ingress-nginx,app.kubernetes.io/name=ingress-ngin
 ```
-
 
 #### Install Storage provisionner
 Nous allons maintenant installer un stockage provisionner afin de permettre à nos applications d'avoir du stockage persistant de type nfs.
@@ -165,4 +163,70 @@ Nous allons ajouter une annotation à la storageclass "example-nfs" afin quelle 
 
 ```bash
 kubectl patch storageclass example-nfs -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+```
+
+Nous pouvons voir que nous avons une storageclass disponible qui est par default :
+
+```bash
+k get sc
+
+NAME                    PROVISIONER       RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+example-nfs (default)   example.com/nfs   Delete          Immediate           false                  56m
+```
+
+#### Installation de l'application à l'aide des manifestes:
+Première installation de l'application en utilisant les manifestes:
+
+```bash
+cd labs/02_lab-02/01_kubernetes\ manifest/
+
+k apply -f all-in-one.yaml
+```
+
+S'assurer que tous les pods soient en running :
+```bash
+k get po
+
+NAME                                                              READY   STATUS    RESTARTS      AGE
+conference-app-agenda-service-deployment-578f57dcc6-zvmgg         1/1     Running   1 (28s ago)   61s
+conference-app-c4p-service-deployment-6798d4c9d9-dw82r            1/1     Running   1 (31s ago)   64s
+conference-app-frontend-deployment-79c54f5bb-ggkvz                1/1     Running   1 (35s ago)   67s
+conference-app-kafka-0                                            1/1     Running   0             3m12s
+conference-app-notifications-service-deployment-569579648f4cpj6   1/1     Running   0             76s
+conference-app-postgresql-0                                       1/1     Running   0             3m12s
+conference-app-redis-master-0                                     1/1     Running   0             3m12s
+nfs-provisioner-77ccd49b84-vjlhc                                  1/1     Running   0             68m
+```
+
+L'application est accessible via votre navigateur à l'ip: 192.168.99.150 ou sur l'IP attribué à votre ingressclass nginx:
+
+```bash
+kubectl -n ingress-nginx get service ingress-nginx-controller -o=jsonpath='{.status.loadBalancer.ingress[0].ip}'
+```
+
+Comment désinstaller l'application
+```bash
+k delete -f all-in-one.yaml
+```
+
+#### Installation via helm puis export du helm-chart sur son registry github:
+L'installation via helm:
+```bash
+cd 02_helm/conference-app
+helm dependency build .
+helm install conference-app .
+```
+
+Comment exporter le chart sur son registry:
+```bash
+export HELM_EXPERIMENTAL_OCI=1
+export PAT=<your github token>
+echo $PAT | helm registry login ghcr.io -u <your github username> --password-stdin
+helm package .
+helm push conference-app-v1.0.0.tgz oci://ghcr.io/<your github username>
+```
+
+Comment désisntaller l'application:
+```bash
+helm uninstall conference-app
 ```

@@ -1,0 +1,28 @@
+# secure kubeconfig file, connect on master node as root user then run the following command
+chmod 600 /root/.kube/config
+
+# install baremetal loadbalancer : metallb and nginx ingress controller
+
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.9/config/manifests/metallb-native.yaml
+kubectl get all -n metallb-system
+kubectl apply -f https://raw.githubusercontent.com/eazytraining/kubernetes-certified-administrator-training/v1.29/09_lab-09/ip_address_pool/ipaddresspool.yml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.7.0/deploy/static/provider/cloud/deploy.yaml
+
+kubectl get svc -n ingress-nginx -o wide
+# get external IP of ingress-nginx-controller service loadbalancer 
+
+# Install Storage class  example-nfs
+
+nfs_base_url=https://raw.githubusercontent.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner/nfs-server-provisioner-1.8.0/deploy/kubernetes
+
+kubectl create -f ${nfs_base_url}/deployment.yaml
+kubectl create -f ${nfs_base_url}/rbac.yaml
+kubectl create -f ${nfs_base_url}/class.yaml
+
+kubectl patch storageclass example-nfs -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
+# install helm 3.7+
+
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh

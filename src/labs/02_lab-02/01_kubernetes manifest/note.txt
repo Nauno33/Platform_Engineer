@@ -1,0 +1,61 @@
+## Apply each stack
+
+# deploy app
+cd 00_postgresql/
+kubectl apply -f .
+kubectl get po
+cd ../01_kafka/
+kubectl apply -f
+kubectl get po
+cd ../02_redis/
+kubectl apply -f .
+kubectl get po
+cd ../03_notifications/
+kubectl apply -f .
+kubectl get po
+cd ../04_agenda/
+kubectl apply -f .
+cd ../05_c4p/
+kubectl apply -f .
+cd ../06_frontend/
+kubectl apply -f .
+kubectl get po
+
+## OR Apply all stack at once
+find . -type f -name '*.yml' | while read file; do
+    kubectl apply -f "$file"
+done
+
+
+# open browser at at the IP retrieved from the following cli
+kubectl -n ingress-nginx get service ingress-nginx-controller -o=jsonpath='{.status.loadBalancer.ingress[0].ip}'
+
+
+# visualize resources
+(
+  set -x; cd "$(mktemp -d)" &&
+  OS="$(uname | tr '[:upper:]' '[:lower:]')" &&
+  ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')" &&
+  KREW="krew-${OS}_${ARCH}" &&
+  curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" &&
+  tar zxvf "${KREW}.tar.gz" &&
+  ./"${KREW}" install krew
+)
+
+echo "export PATH=\"${KREW_ROOT:-$HOME/.krew}/bin:$PATH\"" >> $HOME/.bashrc
+kubectl krew install graph
+yum install graphviz -y
+kubectl graph -f all-in-one.yaml | dot -T svg -o /tmp/pods.svg
+
+# scaling
+kubectl scale --replicas=2 deployments/conference-app-frontend-deployment
+kubectl set env deployment/conference-app-frontend-deployment FEATURE_DEBUG_ENABLED=true
+
+# build resiliency
+kubectl scale --replicas=0 deployment conference-app-agenda-service-deployment
+
+# delete apply
+cd ..
+find . -type f -name '*.yml' | while read file; do
+    kubectl delete -f "$file"
+done

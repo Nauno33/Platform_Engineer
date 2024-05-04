@@ -1,0 +1,30 @@
+# install helm 3.7+
+
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+
+# install chart
+conference-app
+helm dependency build conference-app
+helm install conference-app conference-app
+
+# test application
+
+# package and publish chart to oci
+0- enable oci
+export HELM_EXPERIMENTAL_OCI=1
+1- generate github token helm-chart-release (with  scope write:packages et read:packages) and export 
+export PAT=<your token>
+2- login on github
+echo $PAT | helm registry login ghcr.io -u <your github username> --password-stdin
+3- package chart
+cd ..
+helm package conference-app
+4- push chart
+helm push conference-app-v1.0.0.tgz oci://ghcr.io/<your github username>
+
+# Uninstall chart
+helm uninstall conference-app
+
+#### IMPORTANT : take a snapshot of both master and network node

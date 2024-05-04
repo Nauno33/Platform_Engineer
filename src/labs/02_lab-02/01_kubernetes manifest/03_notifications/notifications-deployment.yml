@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conference-app-notifications-service-deployment
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: notifications-service
+  template:
+    metadata:
+      labels:
+        app: notifications-service
+        app.kubernetes.io/name: notifications-service
+        app.kubernetes.io/part-of: notifications-service
+        app.kubernetes.io/version: v1.0.0
+        keptn.sh/post-deployment-tasks: stdout-notification
+    spec:
+      containers:
+      - name: notifications-service
+        image: "salaboy/notifications-service-0e27884e01429ab7e350cb5dff61b525:v1.0.0"
+        imagePullPolicy: Always
+        env:
+        - name: KAFKA_URL
+          value: conference-app-kafka.default.svc.cluster.local
+        - name: POD_NODENAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        livenessProbe:
+          httpGet:
+            path: /health/liveness
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /health/readiness
+            port: 8080
+        ports:
+        - containerPort: 8080

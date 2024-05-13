@@ -1,0 +1,58 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: sql.db.local.eazytraining.io
+  labels:
+    type: dev
+    provider: local
+    kind: sql
+spec:
+  writeConnectionSecretsToNamespace: crossplane-system
+  compositeTypeRef:
+    apiVersion: eazytraining.io/v1alpha1
+    kind: Database
+  resources:  
+    - name: postgresql-helm-release
+      base:
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        metadata:
+          annotations:
+            crossplane.io/external-name: # patched
+        spec:
+          rollbackLimit: 3
+          forProvider:
+            namespace: default
+            chart:
+              name: postgresql
+              repository: https://charts.bitnami.com/bitnami
+              version: "12.5.9"
+            values:
+              image:
+                debug: true
+              primary: 
+                initdb:
+                  user: postgres
+                  password: postgres
+                  scriptsConfigMap: c4p-init-sql
+              global:
+                postgresql:
+                  auth: 
+                    postgresPassword: postgres
+          providerConfigRef:
+            name: default
+      patches:
+        - fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          policy:
+            fromFieldPath: Required
+        - fromFieldPath: metadata.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-postgres"
+      readinessChecks:
+      - type: MatchString
+        fieldPath: status.atProvider.state
+        matchString: deployed

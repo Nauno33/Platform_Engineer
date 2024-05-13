@@ -1,0 +1,10 @@
+apiVersion: eazytraining.io/v1alpha1
+kind: Environment
+metadata:
+  name: team-b-dev-env
+spec:
+  compositionSelector:
+    matchLabels:
+      type: development
+  parameters: 
+    installInfra: false

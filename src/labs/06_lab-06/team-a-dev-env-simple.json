@@ -1,0 +1,10 @@
+{
+    "name": "team-curl-dev-env",
+    "parameters":{
+        "type": "development",
+        "installInfra": true,
+        "frontend":{
+            "debug": true
+        }
+    }
+}

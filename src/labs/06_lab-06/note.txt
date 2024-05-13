@@ -1,0 +1,67 @@
+# Install vcluster
+curl -L -o vcluster "https://github.com/loft-sh/vcluster/releases/download/v0.19.5/vcluster-linux-amd64" && sudo install -c -m 0755 vcluster /usr/local/bin && rm -f vcluster
+
+SA=$(kubectl -n crossplane-system get sa -o name | grep provider-helm | sed -e 's|serviceaccount\/|crossplane-system:|g')
+kubectl create clusterrolebinding provider-helm-admin-binding --clusterrole cluster-admin --serviceaccount="${SA}"
+
+# create XRD
+kubectl apply -f resources/definitions
+
+# Create compositions
+kubectl apply -f resources/compositions
+
+kubectl -n crossplane-system apply -f  - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ghcr-credentials
+  namespace: crossplane-system
+stringData:
+  name: ghcr-credentials
+  url: ghcr.io/<your github login>
+  enableOCI: "true"
+  type: helm
+  username: "<your github login>"
+  password: "<your github token>"
+  ForceHttpBasicAuth: "true"
+EOF
+
+# Create new dev env
+kubectl apply -f team-a-dev-env.yml
+
+# get vcluster name
+kubectl get releases
+
+# connect to specific cluster
+vcluster connect team-a-dev-env-<id> --server https://localhost:8443 -- bash 
+
+kubectl get ns
+kubectl get po
+# expose app from the choosen cluster
+kubectl port-forward svc/frontend 8080:80 --address 0.0.0.0
+
+# get kubeconfig file
+# exit vcluster connect
+kubectl get secret vc-team-a-dev-env-<id> -n team-a-dev-env-<id> -o jsonpath="{.data.config}" | base64 --decode > /tmp/kubeconfig-team-a-dev-env-<id>
+# replace server: https://team-a-dev-env-<id>...... with https://<ip of the cluster IP of the corresponding service>
+
+# install argocd cli 
+ARGOCD_VERSION=$(curl --silent "https://api.github.com/repos/argoproj/argo-cd/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+curl -sSL -o /tmp/argocd-${ARGOCD_VERSION} https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64
+
+chmod +x /tmp/argocd-${ARGOCD_VERSION}
+sudo mv /tmp/argocd-${ARGOCD_VERSION} /usr/local/bin/argocd 
+
+# login on argocd
+argocd login <ip of argocd-server cluster IP service>:80
+
+# add to argocd
+argocd cluster add my-vcluster --kubeconfig=/tmp/kubeconfig-team-a-dev-env-<id>
+
+# connect to argocd CD 
+kubectl port-forward svc/argocd-server -n argocd 8080:443 --address 0.0.0.0 
+
+# look at settings/clusters panel
+
+# delete dev cluster
+kubectl delete -f team-a-dev-env.yml

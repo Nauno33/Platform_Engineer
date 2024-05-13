@@ -1,0 +1,41 @@
+# Install crossplane
+
+helm repo add crossplane-stable https://charts.crossplane.io/stable
+helm repo update
+
+helm install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane --version 1.15.0 --wait 
+
+kubectl apply -f resources/crossplane/helm-provider.yml
+kubectl get providers.pkg.crossplane.io
+
+kubectl apply -f resources/crossplane/helm-provider-config.yml
+
+# App Infrastructure on demand using Crossplane Compositions
+kubectl apply -f resources/definitions
+kubectl apply -f resources/compositions
+kubectl apply -f resources/config
+
+# Let's provision Application Infrastructure
+kubectl apply -f my-db-keyvalue.yml
+kubectl get dbs
+kubectl apply -f my-db-sql.yml
+kubectl get dbs
+kubectl get pods
+kubectl get secret
+
+kubectl apply -f my-messagebroker-kafka.yml
+kubectl get mbs
+kubectl get pods
+
+# Let's deploy our Conference Application
+
+helm install conference oci://ghcr.io/diranetafen/conference-app --version v1.0.0 -f app-values.yaml
+kubectl get po
+
+# check that the app work as expected
+
+# clean deployment
+helm uninstall conference
+kubectl delete -f my-messagebroker-kafka.yml
+kubectl delete -f my-db-sql.yml
+kubectl delete -f my-db-keyvalue.yml

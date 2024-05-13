@@ -1,0 +1,47 @@
+# install crosplane sub-cli
+
+curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+sudo mv kubectl-crossplane /usr/local/bin
+
+# install aws provider
+kubectl crossplane install provider crossplane/provider-aws:v0.21.2
+kubectl get providers.pkg.crossplane.io
+
+# App Infrastructure on demand using Crossplane Compositions (in aws folder)
+kubectl apply -f resources/
+
+# create .aws-credentials.txt file (please never commit and push this file on public repo)
+[default]
+aws_access_key_id = 
+aws_secret_access_key = 
+
+kubectl create secret \
+generic aws-secret \
+-n crossplane-system \
+--from-file=creds=./aws-credentials.txt
+
+cat <<EOF | kubectl apply -f -
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-secret
+      key: creds
+EOF
+
+
+kubectl apply -f my-db-keyvalue.yml
+kubectl apply -f my-db-sql.yml
+kubectl apply -f aws-messagebroker-kafka.yml
+
+# Make sure to fill in the commented out aspects of the yaml file based off values from newly created AWS infrastructure.
+
+helm install conference oci://ghcr.io/diranetafen/conference-app --version v1.0.0 -f app-values.yaml
+kubectl get po
+
+

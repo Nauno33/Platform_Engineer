@@ -1,0 +1,1 @@
+ To publish to Docker Hub the docker/login-action@v2 action is used and required the configuration of two environment Secrets (secrets.DOCKERHUB_USERNAME, secrets.DOCKERHUB_TOKEN) which enable the Pipeline runs to push containers to my Docker Hub account.

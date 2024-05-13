@@ -1,0 +1,45 @@
+# Install argocd
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl get po -n argocd
+kubectl port-forward svc/argocd-server -n argocd 8080:443 --address 0.0.0.0
+
+# get password, login is admin
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+
+# deploy staging infra
+kubectl create ns staging
+
+# create new app in argo
+Application Name: "staging-environment"
+Project: "default"
+Sync Policy: "Automatic"
+Source Repository: https://github.com/eazytraining/platform-engineer (here you can point to your fork)
+Revision: "HEAD"
+Path: "04_lab-04/staging"
+Cluster: "https://kubernetes.default.svc"
+Namespace: "staging"
+
+# if your github chart release OCI are private
+kubectl -n argocd apply -f  - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oci-ghcr-secrets
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: oci-ghcr-secrets
+  url: ghcr.io/<your github login>
+  enableOCI: "true"
+  type: helm
+  username: "<your github login>"
+  password: "<your github token>"
+  ForceHttpBasicAuth: "true"
+EOF
+
+# To view the app
+kubectl port-forward svc/frontend -n staging 8081:80 --address 0.0.0.0
+
+# Delete app in argoCD
